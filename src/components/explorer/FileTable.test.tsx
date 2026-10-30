@@ -41,24 +41,24 @@ describe("FileTable", () => {
 
   it("calls onSort when header clicked", () => {
     const onSort = vi.fn();
-    render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={onSort} selectedIds={new Set()} onSelect={vi.fn()} onOpen={vi.fn()} />);
+    const { container } = render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={onSort} selectedIds={new Set()} onSelect={vi.fn()} onOpen={vi.fn()} />);
 
     const headers = container.querySelectorAll('.border-b.h-9 > div');
-    const nameHeader = Array.from(headers).find(el => el.textContent?.includes('Name'));
-    fireEvent.click(nameHeader!);
+    const nameHeader = Array.from(headers).find(el => (el as HTMLElement).textContent?.includes('Name'));
+    fireEvent.click(nameHeader as HTMLElement);
     expect(onSort).toHaveBeenCalledWith("name");
 
-    const sizeHeader = Array.from(headers).find(el => el.textContent?.includes('Size'));
-    fireEvent.click(sizeHeader!);
+    const sizeHeader = Array.from(headers).find(el => (el as HTMLElement).textContent?.includes('Size'));
+    fireEvent.click(sizeHeader as HTMLElement);
     expect(onSort).toHaveBeenCalledWith("size");
   });
 
   it("calls onSelect when row clicked", () => {
     const onSelect = vi.fn();
-    render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={vi.fn()} selectedIds={new Set()} onSelect={onSelect} onOpen={vi.fn()} />);
+    const { container } = render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={vi.fn()} selectedIds={new Set()} onSelect={onSelect} onOpen={vi.fn()} />);
 
     const rowDiv = container.querySelector("div[style*='height: 36px']");
-    fireEvent.click(rowDiv!);
+    fireEvent.click(rowDiv as HTMLElement);
     expect(onSelect).toHaveBeenCalledWith("1", false, false);
   });
 });
