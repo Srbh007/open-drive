@@ -18,7 +18,7 @@ export function CopyLinkButton({ file, onCopy, className }: CopyLinkButtonProps)
       const link = await onCopy(file);
       await navigator.clipboard.writeText(link);
       toast.success("Link copied");
-    } catch (err) {
+    } catch {
       toast.error("Failed to copy link");
     }
   };

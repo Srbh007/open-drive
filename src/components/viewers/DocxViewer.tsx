@@ -4,9 +4,10 @@ import { renderAsync } from "docx-preview";
 
 interface DocxViewerProps {
   file: FileItem;
+  src: string;
 }
 
-export function DocxViewer({ file }: DocxViewerProps) {
+export function DocxViewer({ src }: DocxViewerProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -18,7 +19,7 @@ export function DocxViewer({ file }: DocxViewerProps) {
 
     async function loadDocx() {
       try {
-        const res = await fetch(`/api/stream/${file.id}`);
+        const res = await fetch(src);
         if (!res.ok) throw new Error("Failed to fetch docx");
         const arrayBuffer = await res.arrayBuffer();
         if (active && containerRef.current) {
@@ -42,7 +43,7 @@ export function DocxViewer({ file }: DocxViewerProps) {
     loadDocx();
 
     return () => { active = false; };
-  }, [file.id]);
+  }, [src]);
 
   return (
     <div className="w-full h-full bg-white overflow-auto rounded text-black relative flex justify-center">

@@ -3,9 +3,10 @@ import { FileItem } from "@/lib/types";
 
 interface ImageViewerProps {
   file: FileItem;
+  src: string;
 }
 
-export function ImageViewer({ file }: ImageViewerProps) {
+export function ImageViewer({ file, src }: ImageViewerProps) {
   const [zoom, setZoom] = React.useState(1);
   const [position, setPosition] = React.useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = React.useState(false);
@@ -44,7 +45,7 @@ export function ImageViewer({ file }: ImageViewerProps) {
       onMouseLeave={handleMouseUp}
     >
       <img
-        src={`/api/stream/${file.id}`}
+        src={src}
         alt={file.name}
         style={{
           transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,

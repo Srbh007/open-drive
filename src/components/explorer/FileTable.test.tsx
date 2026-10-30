@@ -1,12 +1,12 @@
 import * as React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { FileTable } from "./FileTable";
 import { FileItem, DriveSummary } from "@/lib/types";
 
 // Mock useVirtualizer to render all items synchronously for testing
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: (options: any) => ({
+  useVirtualizer: (options: { count: number }) => ({
     getVirtualItems: () => Array.from({ length: options.count }).map((_, i) => ({
       index: i,
       key: String(i),
@@ -33,7 +33,7 @@ const mockDrives: DriveSummary[] = [
 describe("FileTable", () => {
   it("renders files and headers", () => {
     const onSort = vi.fn();
-    const { container } = render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={onSort} selectedIds={new Set()} onSelect={vi.fn()} onOpen={vi.fn()} />);
+    render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={onSort} selectedIds={new Set()} onSelect={vi.fn()} onOpen={vi.fn()} />);
 
     expect(screen.getAllByText("A.txt")[0]).toBeTruthy();
     expect(screen.getAllByText("B.txt")[0]).toBeTruthy();
@@ -41,7 +41,7 @@ describe("FileTable", () => {
 
   it("calls onSort when header clicked", () => {
     const onSort = vi.fn();
-    const { container } = render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={onSort} selectedIds={new Set()} onSelect={vi.fn()} onOpen={vi.fn()} />);
+    render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={onSort} selectedIds={new Set()} onSelect={vi.fn()} onOpen={vi.fn()} />);
 
     const headers = container.querySelectorAll('.border-b.h-9 > div');
     const nameHeader = Array.from(headers).find(el => el.textContent?.includes('Name'));
@@ -55,7 +55,7 @@ describe("FileTable", () => {
 
   it("calls onSelect when row clicked", () => {
     const onSelect = vi.fn();
-    const { container } = render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={vi.fn()} selectedIds={new Set()} onSelect={onSelect} onOpen={vi.fn()} />);
+    render(<FileTable files={mockFiles} drives={mockDrives} sortKey="name" sortDesc={false} onSort={vi.fn()} selectedIds={new Set()} onSelect={onSelect} onOpen={vi.fn()} />);
 
     const rowDiv = container.querySelector("div[style*='height: 36px']");
     fireEvent.click(rowDiv!);

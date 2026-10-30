@@ -7,7 +7,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger
 } from "@/components/ui/context-menu";
-import { ExternalLink, Copy, Link2, Pencil, Trash2, Download, FolderPlus, UploadCloud } from "lucide-react";
+import { ExternalLink, Link2, Pencil, Trash2, Download, FolderPlus, UploadCloud } from "lucide-react";
 import { canEditInGoogle } from "@/lib/viewers";
 
 interface ContextMenuProps {

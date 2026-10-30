@@ -20,9 +20,10 @@ interface ViewerModalProps {
   onClose: () => void;
   onChangeIndex: (index: number) => void;
   onAction: (action: string, file: FileItem) => void;
+  getStreamUrl: (file: FileItem) => string;
 }
 
-export function ViewerModal({ files, currentIndex, drives, isOpen, onClose, onChangeIndex, onAction }: ViewerModalProps) {
+export function ViewerModal({ files, currentIndex, drives, isOpen, onClose, onChangeIndex, onAction, getStreamUrl }: ViewerModalProps) {
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen || files.length === 0 || currentIndex < 0 || currentIndex >= files.length) return;
@@ -41,14 +42,15 @@ export function ViewerModal({ files, currentIndex, drives, isOpen, onClose, onCh
   const file = files[currentIndex];
   const kind = getViewerKind(file.mimeType);
   const drive = drives.find(d => d.id === file.driveAccountId);
+  const srcUrl = getStreamUrl(file);
 
   let ViewerContent = <FallbackViewer file={file} onDownload={(f) => onAction("download", f)} />;
-  if (kind === "image") ViewerContent = <ImageViewer file={file} />;
-  else if (kind === "video") ViewerContent = <VideoPlayer file={file} />;
-  else if (kind === "pdf") ViewerContent = <PdfViewer file={file} />;
-  else if (kind === "docx") ViewerContent = <DocxViewer file={file} />;
-  else if (kind === "sheet") ViewerContent = <SheetViewer file={file} />;
-  else if (kind === "code") ViewerContent = <CodeViewer file={file} />;
+  if (kind === "image") ViewerContent = <ImageViewer file={file} src={srcUrl} />;
+  else if (kind === "video") ViewerContent = <VideoPlayer file={file} src={srcUrl} />;
+  else if (kind === "pdf") ViewerContent = <PdfViewer file={file} src={srcUrl} />;
+  else if (kind === "docx") ViewerContent = <DocxViewer file={file} src={srcUrl} />;
+  else if (kind === "sheet") ViewerContent = <SheetViewer file={file} src={srcUrl} />;
+  else if (kind === "code") ViewerContent = <CodeViewer file={file} src={srcUrl} />;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>

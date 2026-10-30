@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Folder, HardDrive, ChevronRight } from "lucide-react";
+
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import { DriveSummary } from "@/lib/types";

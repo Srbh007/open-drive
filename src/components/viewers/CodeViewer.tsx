@@ -1,12 +1,27 @@
 import * as React from "react";
 import { FileItem } from "@/lib/types";
-import { createHighlighter } from "shiki";
+import { createHighlighter, Highlighter } from "shiki";
 
 interface CodeViewerProps {
   file: FileItem;
+  src: string;
 }
 
-export function CodeViewer({ file }: CodeViewerProps) {
+// Module-level lazy singleton for the highlighter
+let highlighterPromise: Promise<Highlighter> | null = null;
+const THEME = 'github-dark';
+
+function getOrCreateHighlighter() {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: [THEME],
+      langs: ['text', 'json', 'javascript', 'typescript', 'html', 'css'],
+    });
+  }
+  return highlighterPromise;
+}
+
+export function CodeViewer({ file, src }: CodeViewerProps) {
   const [html, setHtml] = React.useState<string>("");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -19,7 +34,7 @@ export function CodeViewer({ file }: CodeViewerProps) {
 
     async function loadCode() {
       try {
-        const res = await fetch(`/api/stream/${file.id}`);
+        const res = await fetch(src);
         if (!res.ok) throw new Error("Failed to fetch code");
         const text = await res.text();
 
@@ -31,12 +46,14 @@ export function CodeViewer({ file }: CodeViewerProps) {
           else if (file.name.endsWith(".html")) lang = "html";
           else if (file.name.endsWith(".css")) lang = "css";
 
-          const highlighter = await createHighlighter({
-            themes: ['github-dark'],
-            langs: [lang, 'text'],
-          });
+          const highlighter = await getOrCreateHighlighter();
 
-          const highlighted = highlighter.codeToHtml(text, { lang, theme: 'github-dark' });
+          // Ensure language is loaded if we dynamically add more later, though pre-loaded above
+          if (!highlighter.getLoadedLanguages().includes(lang as never)) {
+             await highlighter.loadLanguage(lang as never);
+          }
+
+          const highlighted = highlighter.codeToHtml(text, { lang, theme: THEME });
           setHtml(highlighted);
           setLoading(false);
         }
@@ -51,7 +68,7 @@ export function CodeViewer({ file }: CodeViewerProps) {
     loadCode();
 
     return () => { active = false; };
-  }, [file.id, file.name, file.mimeType]);
+  }, [file.id, file.name, file.mimeType, src]);
 
   return (
     <div className="w-full h-full flex flex-col bg-[#24292e] text-white rounded overflow-hidden relative">
