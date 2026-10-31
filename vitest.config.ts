@@ -5,14 +5,15 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
     env: {
       SKIP_ENV_VALIDATION: "1"
     },
-    include: ['src/**/*.test.{ts,tsx}']
+    include: ['src/**/*.test.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
   resolve: {
     alias: {
