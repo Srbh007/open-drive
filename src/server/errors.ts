@@ -23,10 +23,11 @@ export class AppError extends Error {
   }
 }
 
-type RouteHandler = (req: Request, ...args: unknown[]) => Promise<unknown> | unknown;
-
-export function withRoute(handler: RouteHandler) {
-  return async (req: Request, ...args: unknown[]) => {
+// Allow passing specific context (e.g. Next.js 15 { params: Promise<{ id: string }> })
+export function withRoute<TArgs extends unknown[]>(
+  handler: (req: Request, ...args: TArgs) => Promise<unknown> | unknown
+) {
+  return async (req: Request, ...args: TArgs) => {
     try {
       const data = await handler(req, ...args);
       return NextResponse.json({ ok: true, data });
