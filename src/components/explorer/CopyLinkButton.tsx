@@ -29,7 +29,7 @@ export function CopyLinkButton({ file, onCopy, className }: CopyLinkButtonProps)
       size="icon"
       className={className}
       onClick={handleCopy}
-      title="Copy link"
+      title="Links coming soon"
     >
       <Link2 className="h-4 w-4" />
     </Button>

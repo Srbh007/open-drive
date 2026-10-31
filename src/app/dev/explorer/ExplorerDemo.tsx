@@ -35,8 +35,8 @@ const generateFiles = (count: number, parentId: string | null): FileItem[] => {
   return Array.from({ length: count }).map((_, i) => ({
     id: `file_${parentId}_${i}`,
     driveAccountId: mockDrives[i % mockDrives.length].id,
-    providerFileId: `prov_${i}`,
-    parentProviderId: parentId,
+    parentId: parentId,
+
     name: `File ${i}`,
     title: `File ${i} Title`,
     mimeType: i % 10 === 0 ? "application/vnd.google-apps.folder" : mimeTypes[i % mimeTypes.length],
@@ -69,7 +69,7 @@ export function ExplorerDemo() {
 
   // Derived state
   const currentFiles = React.useMemo(() => {
-    const files = allFiles.filter(f => f.parentProviderId === currentFolder);
+    const files = allFiles.filter(f => f.parentId === currentFolder);
     files.sort((a, b) => {
       let aVal = a[sortKey];
       let bVal = b[sortKey];

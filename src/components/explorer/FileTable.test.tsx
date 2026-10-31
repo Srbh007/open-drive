@@ -19,10 +19,10 @@ vi.mock("@tanstack/react-virtual", () => ({
 
 const mockFiles: FileItem[] = [
   {
-    id: "1", name: "A.txt", title: "A.txt", mimeType: "text/plain", size: 100, isFolder: false, driveAccountId: "d1", modifiedAt: new Date("2024-01-01"), hasThumbnail: false, webViewLink: null, width: null, height: null, durationMs: null, version: "1", trashed: false, providerFileId: "p1", parentProviderId: "root"
+    id: "1", name: "A.txt", title: "A.txt", mimeType: "text/plain", size: 100, isFolder: false, driveAccountId: "d1", modifiedAt: new Date("2024-01-01"), hasThumbnail: false, webViewLink: null, width: null, height: null, durationMs: null, version: "1", trashed: false, parentId: "root"
   },
   {
-    id: "2", name: "B.txt", title: "B.txt", mimeType: "text/plain", size: 200, isFolder: false, driveAccountId: "d1", modifiedAt: new Date("2024-01-02"), hasThumbnail: false, webViewLink: null, width: null, height: null, durationMs: null, version: "1", trashed: false, providerFileId: "p2", parentProviderId: "root"
+    id: "2", name: "B.txt", title: "B.txt", mimeType: "text/plain", size: 200, isFolder: false, driveAccountId: "d1", modifiedAt: new Date("2024-01-02"), hasThumbnail: false, webViewLink: null, width: null, height: null, durationMs: null, version: "1", trashed: false, parentId: "root"
   }
 ];
 
