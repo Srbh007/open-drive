@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Public_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { RegisterSW } from "@/components/pwa/RegisterSW";
 
 const publicSans = Public_Sans({
   variable: "--font-sans",
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${publicSans.variable} ${jetbrainsMono.variable} antialiased`}>
+        <RegisterSW />
         {children}
       </body>
     </html>
