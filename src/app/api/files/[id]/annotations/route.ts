@@ -1,11 +1,12 @@
 import 'server-only';
 import { db } from '@/server/db';
-import { annotations, files, userDriveAccess } from '@/server/db/schema';
+import { annotations } from '@/server/db/schema';
 import { requireUser } from '@/server/guard';
-import { withRoute } from '@/server/errors';
-import { AppError } from '@/server/errors';
-import { and, eq } from 'drizzle-orm';
+import { withRoute, AppError } from '@/server/errors';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { getFileForUser } from '@/server/files';
+import { writeAudit } from '@/server/audit';
 
 const putSchema = z.object({
   caption: z.string().max(500).optional().nullable(),
@@ -14,37 +15,27 @@ const putSchema = z.object({
   favorite: z.boolean().optional(),
 });
 
-async function getFileForUser(fileId: string, user: { id: string, role: string }, needEdit: boolean) {
-  const [file] = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
-  if (!file) throw new AppError('NOT_FOUND', 'File not found', 404);
+const idSchema = z.string().uuid();
 
-  if (user.role === 'owner' || user.role === 'admin') return file;
-
-  const [access] = await db
-    .select()
-    .from(userDriveAccess)
-    .where(and(eq(userDriveAccess.userId, user.id), eq(userDriveAccess.driveAccountId, file.driveAccountId)))
-    .limit(1);
-
-  if (!access) throw new AppError('FORBIDDEN', 'No access to this file', 403);
-  if (needEdit && !access.canEdit) throw new AppError('FORBIDDEN', 'Edit rights required', 403);
-
-  return file;
-}
-
-export const GET = withRoute(async (req, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
-  const user = await requireUser();
-  await getFileForUser(id, user, false);
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) throw new AppError('VALIDATION', 'Invalid ID', 400);
 
-  const [ann] = await db.select().from(annotations).where(eq(annotations.fileId, id)).limit(1);
+  const user = await requireUser();
+  await getFileForUser(user, parsedId.data, false);
+
+  const [ann] = await db.select().from(annotations).where(eq(annotations.fileId, parsedId.data)).limit(1);
   return ann || { caption: null, description: null, tags: [], favorite: false };
 });
 
-export const PUT = withRoute(async (req, { params }: { params: Promise<{ id: string }> }) => {
+export const PUT = withRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) throw new AppError('VALIDATION', 'Invalid ID', 400);
+
   const user = await requireUser();
-  await getFileForUser(id, user, true);
+  await getFileForUser(user, parsedId.data, true);
 
   const body = await req.json().catch(() => ({}));
   const parsed = putSchema.safeParse(body);
@@ -55,7 +46,7 @@ export const PUT = withRoute(async (req, { params }: { params: Promise<{ id: str
   const { caption, description, tags, favorite } = parsed.data;
 
   const [ann] = await db.insert(annotations).values({
-    fileId: id,
+    fileId: parsedId.data,
     caption,
     description,
     tags: tags || [],
@@ -73,6 +64,8 @@ export const PUT = withRoute(async (req, { params }: { params: Promise<{ id: str
       updatedAt: new Date(),
     }
   }).returning();
+
+  await writeAudit('file.annotate', parsedId.data, user.id);
 
   return ann;
 });
