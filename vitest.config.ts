@@ -1,14 +1,23 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
     alias: {
-      '@': resolve(__dirname, './src')
+      '@': path.resolve(__dirname, './src'),
     },
-    exclude: ['**/node_modules/**', '**/dist/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**', '**/e2e/**'],
+    env: {
+      SKIP_ENV_VALIDATION: "1"
+    },
+    include: ['src/**/*.test.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
+  resolve: {
+    alias: {
+      'server-only': path.resolve(__dirname, 'node_modules/server-only/empty.js')
+    }
+  }
 })
