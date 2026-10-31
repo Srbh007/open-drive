@@ -48,6 +48,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return errorResponse('NOT_FOUND', 'No thumbnail available', 404)
     }
 
+    const thumbUrlObj = new URL(meta.thumbnailLink)
+    if (thumbUrlObj.protocol !== 'https:' || (!thumbUrlObj.hostname.endsWith('.googleusercontent.com') && !thumbUrlObj.hostname.endsWith('.google.com'))) {
+      return errorResponse('NOT_FOUND', 'Invalid thumbnail domain', 404)
+    }
+
     const thumbUrl = meta.thumbnailLink.replace(/=s\d+$/, `=s${mappedSize}`)
 
     const thumbRes = await fetch(thumbUrl, {

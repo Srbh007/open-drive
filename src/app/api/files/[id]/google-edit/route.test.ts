@@ -3,8 +3,8 @@ import { POST } from "./route"
 import * as guard from "@/server/guard"
 import * as dbfiles from "@/server/files"
 import * as tokens from "@/server/google/tokens"
-import { db } from "@/server/db"
 import { AppError } from "@/server/errors"
+import { files } from "@/server/db/schema"
 
 vi.mock("@/server/guard", () => ({
   requireUser: vi.fn(),
@@ -19,7 +19,6 @@ vi.mock("@/server/google/tokens", () => ({
 }))
 
 vi.mock("@/server/db", async () => {
-  const { sql } = await import("drizzle-orm")
   return {
     db: {
       insert: vi.fn().mockReturnThis(),
@@ -28,23 +27,50 @@ vi.mock("@/server/db", async () => {
   }
 })
 
+function makeFileRow(overrides: Partial<typeof files.$inferSelect> = {}): typeof files.$inferSelect {
+  return {
+    id: "00000000-0000-4000-8000-000000000002",
+    driveAccountId: "00000000-0000-0000-0000-000000000003",
+    providerFileId: "provider-123",
+    parentProviderId: null,
+    name: "test.docx",
+    title: null,
+    mimeType: "application/vnd.google-apps.document",
+    isFolder: false,
+    size: 0,
+    hasThumbnail: false,
+    webViewLink: "https://docs.google.com/test",
+    width: null,
+    height: null,
+    durationMs: null,
+    modifiedAt: new Date(),
+    version: null,
+    trashed: false,
+    ...overrides
+  }
+}
+
 describe("POST /api/files/[id]/google-edit", () => {
   const MOCK_USER_ID = "00000000-0000-0000-0000-000000000001"
   const MOCK_FILE_ID = "00000000-0000-4000-8000-000000000002"
-  const MOCK_DRIVE_ACCOUNT_ID = "00000000-0000-0000-0000-000000000003"
-  const mockUser = { id: MOCK_USER_ID, email: "test@example.com", status: "approved", role: "editor" }
+  const mockUser = {
+    id: MOCK_USER_ID,
+    status: "approved",
+    role: "editor",
+    googleSub: "sub123",
+    email: "test@example.com",
+    name: "Test",
+    image: null,
+    approvedBy: null,
+    approvedAt: null,
+    createdAt: new Date(),
+  }
 
   beforeEach(() => {
     vi.mocked(guard.requireUser).mockResolvedValue(mockUser)
     vi.mocked(tokens.getAccessToken).mockResolvedValue("mock-token")
 
-    vi.mocked(dbfiles.getFileForUser).mockResolvedValue({
-      id: MOCK_FILE_ID,
-      driveAccountId: MOCK_DRIVE_ACCOUNT_ID,
-      providerFileId: "provider-123",
-      webViewLink: "https://docs.google.com/test",
-      trashed: false,
-    })
+    vi.mocked(dbfiles.getFileForUser).mockResolvedValue(makeFileRow())
 
     global.fetch = vi.fn()
   })
@@ -55,16 +81,14 @@ describe("POST /api/files/[id]/google-edit", () => {
 
   it("adds writer permission if not existing", async () => {
     // 1. List
-    vi.mocked(global.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ permissions: [] }),
-    })
+    vi.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({ permissions: [] }), {
+      status: 200,
+    }))
 
     // 2. Add
-    vi.mocked(global.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({}),
-    })
+    vi.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({}), {
+      status: 200,
+    }))
 
     const req = new Request(`http://localhost/api/files/${MOCK_FILE_ID}/google-edit`, {
       method: "POST"
@@ -93,14 +117,13 @@ describe("POST /api/files/[id]/google-edit", () => {
 
   it("skips adding if writer permission already exists", async () => {
     // 1. List
-    vi.mocked(global.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          { type: "user", emailAddress: "test@example.com", role: "writer" }
-        ]
-      }),
-    })
+    vi.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      permissions: [
+        { type: "user", emailAddress: "test@example.com", role: "writer" }
+      ]
+    }), {
+      status: 200,
+    }))
 
     const req = new Request(`http://localhost/api/files/${MOCK_FILE_ID}/google-edit`, {
       method: "POST"

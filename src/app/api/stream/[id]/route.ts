@@ -33,7 +33,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     let url: string
     if (isGoogleFile) {
       if (!MIME_MAPPING[file.mimeType]) {
-        return errorResponse('UNSUPPORTED_TYPE', 'Google file type not supported for streaming', 400)
+        return errorResponse('VALIDATION', 'Google file type not supported for streaming', 400)
       }
       url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.providerFileId)}/export?mimeType=${encodeURIComponent(MIME_MAPPING[file.mimeType])}`
     } else {
@@ -62,7 +62,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const finalMimeType = isGoogleFile ? MIME_MAPPING[file.mimeType] : file.mimeType
     if (!headers.has('content-type')) headers.set('content-type', finalMimeType)
-    headers.set('accept-ranges', 'bytes')
+    if (!isGoogleFile) { headers.set('accept-ranges', 'bytes') }
     headers.set('cache-control', 'private, max-age=0')
 
     return new Response(upstream.body, { status: upstream.status, headers })

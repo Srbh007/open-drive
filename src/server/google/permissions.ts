@@ -17,7 +17,7 @@ export async function addGoogleEditPermission(driveAccountId: string, providerFi
 
   const { permissions } = await listRes.json()
   const existing = permissions?.find(
-    (p: { type: string, emailAddress: string, role: string }) => p.type === 'user' && p.emailAddress === email && (p.role === 'writer' || p.role === 'owner')
+    (p: { type: string, emailAddress: string, role: string }) => p.type === 'user' && p.emailAddress?.toLowerCase() === email.toLowerCase() && (p.role === 'writer' || p.role === 'owner')
   )
 
   if (existing) {
