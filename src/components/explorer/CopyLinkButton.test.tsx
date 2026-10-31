@@ -1,58 +1,52 @@
-import * as React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { CopyLinkButton } from "./CopyLinkButton";
-import { FileItem } from "@/lib/types";
-import { toast } from "sonner";
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { expect, test, vi } from 'vitest';
+import { CopyLinkButton } from './CopyLinkButton';
+import { FileItem } from '@/lib/types';
+import { toast } from 'sonner';
 
-vi.mock("sonner", () => ({
+vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
   },
 }));
 
-const mockFile = { id: "1", name: "A.txt", title: "A.txt" } as FileItem;
+const mockFile: FileItem = {
+  id: '123',
+  name: 'test.jpg',
+  mimeType: 'image/jpeg',
+  isFolder: false,
+  size: 100,
+  hasThumbnail: false,
+  width: null,
+  height: null,
+  durationMs: null,
+  modifiedAt: null,
+  driveAccountId: 'drive-id',
+  title: 'test title',
+  parentId: 'parent-id',
+};
 
-describe("CopyLinkButton", () => {
-  beforeEach(() => {
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
-    });
-    vi.clearAllMocks();
+test('CopyLinkButton calls API and shows success toast', async () => {
+  global.fetch = vi.fn().mockResolvedValue({
+    json: () => Promise.resolve({ ok: true, data: { slug: 'test-slug', kind: 'edit' } }),
   });
 
-  afterEach(() => {
-    cleanup();
+  const writeTextMock = vi.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: writeTextMock,
+    },
   });
 
-  it("copies to clipboard and shows success toast", async () => {
-    const onCopy = vi.fn().mockResolvedValue("https://link.example");
+  render(<CopyLinkButton file={mockFile} />);
+  const button = screen.getByRole('button');
+  fireEvent.click(button);
 
-    render(<CopyLinkButton file={mockFile} onCopy={onCopy} />);
-
-    const btn = screen.getByRole("button");
-    fireEvent.click(btn);
-
-    await waitFor(() => {
-      expect(onCopy).toHaveBeenCalledWith(mockFile);
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith("https://link.example");
-      expect(toast.success).toHaveBeenCalledWith("Link copied");
-    });
-  });
-
-  it("shows error toast on failure", async () => {
-    const onCopy = vi.fn().mockRejectedValue(new Error("Network Error"));
-
-    render(<CopyLinkButton file={mockFile} onCopy={onCopy} />);
-
-    const btn = screen.getByRole("button");
-    fireEvent.click(btn);
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Failed to copy link");
-    });
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith('/api/links', expect.any(Object));
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining('/s/test-slug'));
+    expect(toast.success).toHaveBeenCalledWith('Link copied — anyone can edit');
   });
 });
