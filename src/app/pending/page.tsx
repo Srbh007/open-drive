@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
+import { clearPwaCache } from "@/components/pwa/clear-cache"
 
 export default function PendingPage() {
   const router = useRouter()
@@ -40,7 +41,7 @@ export default function PendingPage() {
           </div>
           <Button
             variant="outline"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => { clearPwaCache(); signOut({ callbackUrl: "/login" }); }}
             className="w-full"
           >
             Sign out
