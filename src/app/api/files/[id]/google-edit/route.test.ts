@@ -53,7 +53,7 @@ function makeFileRow(overrides: Partial<typeof files.$inferSelect> = {}): typeof
 describe("POST /api/files/[id]/google-edit", () => {
   const MOCK_USER_ID = "00000000-0000-0000-0000-000000000001"
   const MOCK_FILE_ID = "00000000-0000-4000-8000-000000000002"
-  const mockUser = {
+  const mockUser: guard.CurrentUser = {
     id: MOCK_USER_ID,
     status: "approved",
     role: "editor",
