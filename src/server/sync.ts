@@ -9,24 +9,25 @@ function parseGoogleFile(file: GoogleFile, driveAccountId: string) {
   return {
     driveAccountId,
     providerFileId: file.id,
-    parentProviderId: file.parents?.[0] || null, // take the first parent if multiple
+    parentProviderId: file.parents?.[0] || null,
     name: file.name,
-    title: null, // title is local only
+    title: null,
     mimeType: file.mimeType,
     isFolder: file.mimeType === 'application/vnd.google-apps.folder',
     size: parseInt(file.size || '0', 10),
-    hasThumbnail: false, // will be updated when thumbnail is fetched
+    hasThumbnail: false,
     webViewLink: file.webViewLink || null,
     width: file.imageMediaMetadata?.width || null,
     height: file.imageMediaMetadata?.height || null,
     durationMs: file.videoMediaMetadata?.durationMillis ? parseInt(file.videoMediaMetadata.durationMillis, 10) : null,
     modifiedAt: file.modifiedTime ? new Date(file.modifiedTime) : new Date(),
     trashed: file.trashed || false,
-    version: file.modifiedTime, // using modifiedTime as version
+    version: file.modifiedTime,
   }
 }
 
-export async function performInitialScan(driveAccountId: string): Promise<void> {
+export async function performInitialScan(driveAccountId: string, timeBudgetMs: number = 240000): Promise<void> {
+  const startTime = Date.now()
   log.info(`Starting initial scan for drive: ${driveAccountId}`)
 
   let state = await db.query.syncState.findFirst({
@@ -46,13 +47,17 @@ export async function performInitialScan(driveAccountId: string): Promise<void> 
 
   try {
     while (hasMore) {
+      if (Date.now() - startTime > timeBudgetMs) {
+         log.info(`Time budget exceeded during initial scan for drive ${driveAccountId}, will resume next run.`)
+         return
+      }
+
       log.info(`Fetching files for drive ${driveAccountId}, pageToken: ${pageToken}`)
       const res = await listScanFiles(driveAccountId, pageToken)
 
       if (res.files.length > 0) {
         const fileValues = res.files.map(f => parseGoogleFile(f, driveAccountId))
 
-        // Upsert files
         await db.insert(files).values(fileValues).onConflictDoUpdate({
           target: [files.driveAccountId, files.providerFileId],
           set: {
@@ -82,7 +87,6 @@ export async function performInitialScan(driveAccountId: string): Promise<void> 
       }
     }
 
-    // Scan complete, initialize incremental sync state
     const startPageToken = await getStartPageToken(driveAccountId)
     await db.update(syncState)
       .set({
@@ -105,7 +109,8 @@ export async function performInitialScan(driveAccountId: string): Promise<void> 
   }
 }
 
-export async function performIncrementalSync(driveAccountId: string): Promise<void> {
+export async function performIncrementalSync(driveAccountId: string, timeBudgetMs: number = 240000): Promise<void> {
+  const startTime = Date.now()
   log.info(`Starting incremental sync for drive: ${driveAccountId}`)
 
   const state = await db.query.syncState.findFirst({
@@ -114,7 +119,7 @@ export async function performIncrementalSync(driveAccountId: string): Promise<vo
 
   if (!state || !state.pageToken) {
     log.info(`No page token found for incremental sync of drive ${driveAccountId}, falling back to initial scan.`)
-    return performInitialScan(driveAccountId)
+    return performInitialScan(driveAccountId, timeBudgetMs)
   }
 
   let pageToken = state.pageToken
@@ -122,6 +127,11 @@ export async function performIncrementalSync(driveAccountId: string): Promise<vo
 
   try {
     while (hasMore) {
+      if (Date.now() - startTime > timeBudgetMs) {
+        log.info(`Time budget exceeded during incremental sync for drive ${driveAccountId}, will resume next run.`)
+        return
+      }
+
       log.info(`Fetching changes for drive ${driveAccountId}, pageToken: ${pageToken}`)
       const res = await listChanges(driveAccountId, pageToken)
 
@@ -184,7 +194,6 @@ export async function performIncrementalSync(driveAccountId: string): Promise<vo
       }
     }
 
-    // Refresh quota
     const about = await getDriveAbout(driveAccountId)
     if (about.storageQuota) {
       await db.update(driveAccounts)

@@ -31,6 +31,7 @@ export async function GET(req: Request) {
   const startTime = Date.now()
   const TIME_BUDGET_MS = 240 * 1000 // 240 seconds
   let drivesProcessed = 0
+  let drivesFailed = 0
 
   try {
     // Process oldest synced first
@@ -40,18 +41,26 @@ export async function GET(req: Request) {
     })
 
     for (const drive of drives) {
-      if (Date.now() - startTime > TIME_BUDGET_MS) {
+      const elapsed = Date.now() - startTime
+      if (elapsed > TIME_BUDGET_MS) {
         log.info(`Sync time budget exceeded after processing ${drivesProcessed} drives.`)
         break
       }
 
-      await performIncrementalSync(drive.id)
-      drivesProcessed++
+      const remainingTime = TIME_BUDGET_MS - elapsed
+
+      try {
+        await performIncrementalSync(drive.id, remainingTime)
+        drivesProcessed++
+      } catch (error: unknown) {
+        log.error(`Sync failed for drive ${drive.id}`, error)
+        drivesFailed++
+      }
     }
 
-    return NextResponse.json({ ok: true, data: { processed: drivesProcessed } })
+    return NextResponse.json({ ok: true, data: { processed: drivesProcessed, failed: drivesFailed } })
   } catch (error: unknown) {
     log.error('Sync cron failed', error)
-    return NextResponse.json({ ok: false, error: { code: 'UPSTREAM_ERROR', message: (error as Error).message || 'Internal Server Error' } }, { status: 500 })
+    return NextResponse.json({ ok: false, error: { code: 'UPSTREAM_ERROR', message: 'Internal Server Error' } }, { status: 500 })
   }
 }

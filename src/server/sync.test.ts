@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { performInitialScan, performIncrementalSync } from './sync'
 import { db } from './db'
 import { syncState, files, driveAccounts } from './db/schema'
-import { eq } from 'drizzle-orm'
 import { listScanFiles, getStartPageToken, listChanges, getDriveAbout } from './google/changes'
 
 vi.mock('./db', () => ({
@@ -19,6 +18,9 @@ vi.mock('./db', () => ({
     delete: vi.fn().mockReturnThis(),
   },
   sql: vi.fn((str) => str),
+  and: vi.fn(),
+  inArray: vi.fn(),
+  eq: vi.fn(),
 }))
 
 vi.mock('./google/changes', () => ({

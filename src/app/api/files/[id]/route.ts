@@ -2,20 +2,26 @@ import 'server-only'
 import { z } from 'zod'
 import { db } from '@/server/db'
 import { files } from '@/server/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { withRoute, AppError } from '@/server/errors'
 import { requireUser, requireDriveAccess } from '@/server/guard'
 import { fetchWithToken, COMMON_FIELDS } from '@/server/google/drive'
+import { toFileItem } from '@/server/file-dto'
+
+const IdParamSchema = z.object({
+  id: z.string().uuid()
+})
 
 const PatchSchema = z.object({
-  name: z.string().optional(),
-  title: z.string().optional(),
-  addParents: z.string().optional(),
-  removeParents: z.string().optional(),
+  name: z.string().trim().min(1).max(255).optional(),
+  title: z.string().max(500).optional(),
+  moveToFolderId: z.string().uuid().optional(),
 })
 
 export const GET = withRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params
+  const resolvedParams = await params
+  const { id } = IdParamSchema.parse(resolvedParams)
+
   const user = await requireUser()
 
   const file = await db.query.files.findFirst({
@@ -26,11 +32,27 @@ export const GET = withRoute(async (req: Request, { params }: { params: Promise<
 
   await requireDriveAccess(user, file.driveAccountId, false)
 
-  return file
+  let parentId: string | null = null
+  if (file.parentProviderId) {
+    const parentFolder = await db.query.files.findFirst({
+      where: and(
+        eq(files.providerFileId, file.parentProviderId),
+        eq(files.driveAccountId, file.driveAccountId)
+      ),
+      columns: { id: true }
+    })
+    if (parentFolder) {
+      parentId = parentFolder.id
+    }
+  }
+
+  return toFileItem(file, parentId)
 })
 
 export const PATCH = withRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params
+  const resolvedParams = await params
+  const { id } = IdParamSchema.parse(resolvedParams)
+
   const user = await requireUser()
 
   const file = await db.query.files.findFirst({
@@ -45,17 +67,31 @@ export const PATCH = withRoute(async (req: Request, { params }: { params: Promis
   const parsed = PatchSchema.safeParse(body)
   if (!parsed.success) throw new AppError('VALIDATION', 'Invalid body', 400)
 
-  const { name, title, addParents, removeParents } = parsed.data
+  const { name, title, moveToFolderId } = parsed.data
 
   if (title !== undefined) {
     await db.update(files).set({ title }).where(eq(files.id, id))
   }
 
-  if (name || addParents || removeParents) {
+  if (name || moveToFolderId) {
     const url = new URL(`https://www.googleapis.com/drive/v3/files/${file.providerFileId}`)
     url.searchParams.set('fields', COMMON_FIELDS)
-    if (addParents) url.searchParams.set('addParents', addParents)
-    if (removeParents) url.searchParams.set('removeParents', removeParents)
+
+    if (moveToFolderId) {
+      const targetFolder = await db.query.files.findFirst({
+        where: and(
+          eq(files.id, moveToFolderId),
+          eq(files.driveAccountId, file.driveAccountId),
+          eq(files.isFolder, true)
+        )
+      })
+      if (!targetFolder) throw new AppError('NOT_FOUND', 'Target folder not found', 404)
+
+      url.searchParams.set('addParents', targetFolder.providerFileId)
+      if (file.parentProviderId) {
+        url.searchParams.set('removeParents', file.parentProviderId)
+      }
+    }
 
     const res = await fetchWithToken(file.driveAccountId, url.toString(), {
       method: 'PATCH',
@@ -82,7 +118,9 @@ export const PATCH = withRoute(async (req: Request, { params }: { params: Promis
 })
 
 export const DELETE = withRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params
+  const resolvedParams = await params
+  const { id } = IdParamSchema.parse(resolvedParams)
+
   const user = await requireUser()
 
   const file = await db.query.files.findFirst({
