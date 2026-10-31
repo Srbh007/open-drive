@@ -19,7 +19,7 @@ export function FavoriteStar({ fileId, initialFavorite, canEdit }: { fileId: str
       });
       if (!res.ok) throw new Error('Failed to save');
       setIsFav(!isFav);
-    } catch (e) {
+    } catch {
       toast.error('Could not update favorite');
     } finally {
       setIsLoading(false);

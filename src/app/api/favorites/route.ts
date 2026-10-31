@@ -6,7 +6,7 @@ import { withRoute } from '@/server/errors';
 import { and, eq, inArray, desc } from 'drizzle-orm';
 import { toFileItem } from '@/server/file-dto';
 
-export const GET = withRoute(async (req) => {
+export const GET = withRoute(async () => {
   const user = await requireUser();
 
   const accessRows = await db

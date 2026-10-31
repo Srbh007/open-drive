@@ -3,10 +3,10 @@ import { db } from '@/server/db';
 import { driveAccounts, files, userDriveAccess, syncState } from '@/server/db/schema';
 import { requireUser } from '@/server/guard';
 import { withRoute } from '@/server/errors';
-import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { toFileItem } from '@/server/file-dto';
 
-export const GET = withRoute(async (req) => {
+export const GET = withRoute(async () => {
   const user = await requireUser();
 
   const accessRows = await db

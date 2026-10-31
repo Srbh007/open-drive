@@ -20,7 +20,7 @@ export function CaptionEditor({ fileId, initialCaption, canEdit }: { fileId: str
       if (!res.ok) throw new Error('Failed to save caption');
       setIsEditing(false);
       toast.success('Caption saved');
-    } catch (e) {
+    } catch {
       toast.error('Could not save caption');
     } finally {
       setIsLoading(false);

@@ -21,7 +21,7 @@ export function TagInput({ fileId, initialTags, canEdit }: { fileId: string; ini
       });
       if (!res.ok) throw new Error('Failed to save tags');
       setTags(newTags);
-    } catch (e) {
+    } catch {
       toast.error('Could not save tags');
     } finally {
       setIsLoading(false);

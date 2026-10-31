@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET } from "./route";
+import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/server/guard", () => ({
   requireUser: vi.fn(),

@@ -44,7 +44,7 @@ export const GET = withRoute(async (req, { params }: { params: Promise<{ id: str
 export const PUT = withRoute(async (req, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const user = await requireUser();
-  const file = await getFileForUser(id, user, true);
+  await getFileForUser(id, user, true);
 
   const body = await req.json().catch(() => ({}));
   const parsed = putSchema.safeParse(body);
