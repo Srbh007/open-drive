@@ -11,6 +11,7 @@ export interface GoogleFile {
   parents?: string[]
   trashed?: boolean
   webViewLink?: string
+  hasThumbnail?: boolean
   imageMediaMetadata?: { width: number; height: number }
   videoMediaMetadata?: { durationMillis: string }
 }

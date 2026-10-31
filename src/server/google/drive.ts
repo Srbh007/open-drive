@@ -18,4 +18,4 @@ export async function fetchWithToken(
   })
 }
 
-export const COMMON_FIELDS = 'id,name,mimeType,size,modifiedTime,parents,trashed,webViewLink,imageMediaMetadata,videoMediaMetadata'
+export const COMMON_FIELDS = 'id,name,mimeType,size,modifiedTime,parents,trashed,webViewLink,hasThumbnail,imageMediaMetadata,videoMediaMetadata'
