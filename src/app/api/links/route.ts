@@ -1,75 +1,73 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/server/db'
-import { settings, files, links } from '@/server/db/schema'
-import { withRoute } from '@/server/errors'
+import { settings, links, files, driveAccounts } from '@/server/db/schema'
+import { AppError, withRoute } from '@/server/errors'
 import { requireUser, requireDriveAccess } from '@/server/guard'
-import { getOrCreateLink, hashPassword, LinkKind } from '@/server/links'
+import { getFileForUser } from '@/server/files'
+import { getOrCreateLink, hashPassword, type LinkKind } from '@/server/links'
 
 const createLinkSchema = z.object({
   fileId: z.string().uuid(),
   kind: z.enum(['edit', 'view', 'image']).optional(),
-  expiresInDays: z.number().optional(),
-  password: z.string().optional(),
+  expiresInDays: z.number().int().min(1).max(365).optional(),
+  password: z.string().min(8).max(128).optional(),
 })
 
-export const POST = withRoute(async (req) => {
+async function defaultLinkKind(): Promise<LinkKind> {
+  const [setting] = await db.select().from(settings).where(eq(settings.key, 'copy_link_default')).limit(1)
+  return setting?.value === 'view' ? 'view' : 'edit'
+}
+
+export const POST = withRoute(async (req: Request) => {
   const user = await requireUser()
-  const body = await req.json().catch(() => ({}))
-  const data = createLinkSchema.parse(body)
+  const parsed = createLinkSchema.safeParse(await req.json().catch(() => ({})))
+  if (!parsed.success) throw new AppError('VALIDATION', 'Invalid input', 400)
+  const data = parsed.data
 
-  const [file] = await db.select().from(files).where(eq(files.id, data.fileId)).limit(1)
-  if (!file) throw new Error('NOT_FOUND')
+  const file = await getFileForUser(user, data.fileId)
 
-  await requireDriveAccess(user, file.driveAccountId)
-
-  let kind: LinkKind = data.kind || 'edit'
-  if (!data.kind) {
-    const [setting] = await db.select().from(settings).where(eq(settings.key, 'copy_link_default')).limit(1)
-    if (setting?.value === 'view') {
+  let kind: LinkKind = data.kind ?? (await defaultLinkKind())
+  if (kind === 'edit') {
+    try {
+      await requireDriveAccess(user, file.driveAccountId, true)
+    } catch (err) {
+      // An explicit edit request without edit rights is refused; the default quietly falls back to view.
+      if (data.kind === 'edit' || !(err instanceof AppError) || err.status !== 403) throw err
       kind = 'view'
     }
   }
 
-  let expiresAt = null
-  if (data.expiresInDays) {
-    expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + data.expiresInDays)
+  if (kind === 'image' && (file.isFolder || !file.mimeType.startsWith('image/'))) {
+    throw new AppError('VALIDATION', 'Image links are only for image files', 400)
   }
 
-  let passwordHash = null
-  if (data.password) {
-    passwordHash = await hashPassword(data.password)
-  }
+  const expiresAt = data.expiresInDays ? new Date(Date.now() + data.expiresInDays * 24 * 60 * 60 * 1000) : null
+  const passwordHash = data.password ? await hashPassword(data.password) : null
 
-  const slug = await getOrCreateLink(data.fileId, kind, user.id, expiresAt, passwordHash)
-
+  const slug = await getOrCreateLink(file.id, kind, user.id, expiresAt, passwordHash)
   return { slug, kind }
 })
 
-export const GET = withRoute(async (req) => {
+export const GET = withRoute(async () => {
   const user = await requireUser()
-  const userLinks = await db.query.links.findMany({
-    where: eq(links.createdBy, user.id),
-    with: {
-      file: {
-        with: {
-          driveAccount: true
-        }
-      }
-    },
-    orderBy: (links, { desc }) => [desc(links.createdAt)]
-  })
 
-  return userLinks.map((l: any) => ({
-    id: l.id,
-    slug: l.slug,
-    kind: l.kind,
-    fileId: l.fileId,
-    fileName: l.file?.name || 'Unknown',
-    views: l.views,
-    expiresAt: l.expiresAt,
-    createdAt: l.createdAt,
-    driveColor: l.file?.driveAccount?.color || '#000000'
-  }))
+  return db
+    .select({
+      id: links.id,
+      slug: links.slug,
+      kind: links.kind,
+      fileId: links.fileId,
+      fileName: sql<string>`coalesce(${files.title}, ${files.name})`,
+      views: links.views,
+      expiresAt: links.expiresAt,
+      revokedAt: links.revokedAt,
+      createdAt: links.createdAt,
+      driveColor: driveAccounts.color,
+    })
+    .from(links)
+    .innerJoin(files, eq(links.fileId, files.id))
+    .innerJoin(driveAccounts, eq(files.driveAccountId, driveAccounts.id))
+    .where(eq(links.createdBy, user.id))
+    .orderBy(desc(links.createdAt))
 })

@@ -3,7 +3,7 @@ import { eq, and, isNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto'
 import { db } from '@/server/db'
-import { links } from '@/server/db/schema'
+import { links, files, driveAccounts } from '@/server/db/schema'
 import { AppError } from '@/server/errors'
 
 export type LinkKind = "edit" | "view" | "image"
@@ -77,9 +77,24 @@ export async function getOrCreateLink(
 }
 
 export async function getLinkInfo(slug: string) {
+  if (!/^[A-Za-z0-9_-]{21}$/.test(slug)) throw new AppError('NOT_FOUND', 'Link not found', 404)
   const [link] = await db.select().from(links).where(eq(links.slug, slug)).limit(1)
   if (!link) throw new AppError('NOT_FOUND', 'Link not found', 404)
   if (link.revokedAt) throw new AppError('GONE', 'Link revoked', 410)
   if (link.expiresAt && link.expiresAt < new Date()) throw new AppError('GONE', 'Link expired', 410)
   return link
+}
+
+/** A usable public link: not revoked/expired, file not trashed, Drive still connected. */
+export async function getLinkTarget(slug: string) {
+  const link = await getLinkInfo(slug)
+  const [row] = await db
+    .select({ file: files, driveStatus: driveAccounts.status, rootFolderId: driveAccounts.rootFolderId })
+    .from(files)
+    .innerJoin(driveAccounts, eq(files.driveAccountId, driveAccounts.id))
+    .where(eq(files.id, link.fileId))
+    .limit(1)
+  if (!row || row.file.trashed) throw new AppError('NOT_FOUND', 'Link not found', 404)
+  if (row.driveStatus !== 'active') throw new AppError('GONE', 'This file is temporarily unavailable', 410)
+  return { link, file: row.file }
 }

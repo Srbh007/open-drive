@@ -5,7 +5,7 @@ import { eq, and, inArray, sql } from 'drizzle-orm'
 import { log } from './log'
 import { listScanFiles, getStartPageToken, listChanges, getDriveAbout, type GoogleFile } from './google/changes'
 
-function parseGoogleFile(file: GoogleFile, driveAccountId: string) {
+export function parseGoogleFile(file: GoogleFile, driveAccountId: string) {
   return {
     driveAccountId,
     providerFileId: file.id,
@@ -15,7 +15,7 @@ function parseGoogleFile(file: GoogleFile, driveAccountId: string) {
     mimeType: file.mimeType,
     isFolder: file.mimeType === 'application/vnd.google-apps.folder',
     size: parseInt(file.size || '0', 10),
-    hasThumbnail: false,
+    hasThumbnail: file.hasThumbnail ?? false,
     webViewLink: file.webViewLink || null,
     width: file.imageMediaMetadata?.width || null,
     height: file.imageMediaMetadata?.height || null,
@@ -67,6 +67,7 @@ export async function performInitialScan(driveAccountId: string, timeBudgetMs: n
             isFolder: sql`EXCLUDED.is_folder`,
             size: sql`EXCLUDED.size`,
             webViewLink: sql`EXCLUDED.web_view_link`,
+            hasThumbnail: sql`EXCLUDED.has_thumbnail`,
             width: sql`EXCLUDED.width`,
             height: sql`EXCLUDED.height`,
             durationMs: sql`EXCLUDED.duration_ms`,
@@ -159,6 +160,7 @@ export async function performIncrementalSync(driveAccountId: string, timeBudgetM
             isFolder: sql`EXCLUDED.is_folder`,
             size: sql`EXCLUDED.size`,
             webViewLink: sql`EXCLUDED.web_view_link`,
+            hasThumbnail: sql`EXCLUDED.has_thumbnail`,
             width: sql`EXCLUDED.width`,
             height: sql`EXCLUDED.height`,
             durationMs: sql`EXCLUDED.duration_ms`,

@@ -19,7 +19,6 @@ async function fetchDrives(): Promise<DriveSummary[]> {
 
 export default function UploadPage() {
   const [selectedDriveId, setSelectedDriveId] = React.useState<string | undefined>()
-  const [selectedFolderId] = React.useState<string>("root") // Default to root for simplicity
   const [isDragging, setIsDragging] = React.useState(false)
   
   const { data: drives = [] } = useQuery({
@@ -33,7 +32,7 @@ export default function UploadPage() {
     }
   }, [drives, selectedDriveId])
 
-  const { uploads, addUploads, updateTitle, retryUpload, cancelUpload } = useResumableUpload(selectedDriveId || "", selectedFolderId)
+  const { uploads, addUploads, updateTitle, retryUpload, cancelUpload } = useResumableUpload(selectedDriveId || "")
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -142,6 +141,15 @@ function UploadRow({
   onCancel: () => void 
 }) {
   const [localTitle, setLocalTitle] = React.useState(upload.title)
+  const isImage = upload.file.type.startsWith('image/')
+  // One preview URL per file, released when the row unmounts (creating it during render leaks memory).
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    if (!isImage) return
+    const url = URL.createObjectURL(upload.file)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [upload.file, isImage])
 
   const copyToClipboard = async (text: string, label: string) => {
     await navigator.clipboard.writeText(text)
@@ -155,7 +163,7 @@ function UploadRow({
         const res = await fetch(`/api/files/${upload.fileId}`, { method: 'DELETE' })
         if (!res.ok) throw new Error("Delete failed")
         toast.success("File deleted")
-      } catch (err) {
+      } catch {
         toast.error("Failed to delete file from Drive")
       }
     }
@@ -165,8 +173,8 @@ function UploadRow({
   return (
     <div className="flex items-center gap-4 p-4 hover:bg-surface-muted/50">
       <div className="w-12 h-12 flex-shrink-0 bg-surface-muted rounded-md flex items-center justify-center overflow-hidden">
-        {upload.file.type.startsWith('image/') ? (
-          <img src={URL.createObjectURL(upload.file)} alt="preview" className="w-full h-full object-cover" />
+        {isImage && previewUrl ? (
+          <img src={previewUrl} alt="preview" className="w-full h-full object-cover" />
         ) : (
           <UploadCloud className="h-6 w-6 text-text-muted" />
         )}
@@ -185,7 +193,7 @@ function UploadRow({
                    headers: { 'Content-Type': 'application/json' },
                    body: JSON.stringify({ title: localTitle })
                  })
-               } catch (e) {
+               } catch {
                  toast.error("Failed to save title")
                }
             }
