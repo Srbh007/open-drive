@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { DriveAccessMatrix } from "./DriveAccessMatrix"
 
 type User = {
@@ -24,7 +24,6 @@ export function TeamTable() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
-  const { toast } = useToast()
 
   useEffect(() => {
     async function fetchUsers() {
@@ -34,16 +33,16 @@ export function TeamTable() {
         if (json.ok) {
           setUsers(json.data)
         } else {
-          toast({ title: "Error fetching users", description: json.error.message, variant: "destructive" })
+          toast.error("Error fetching users", { description: json.error.message })
         }
       } catch {
-        toast({ title: "Error", description: "Network error", variant: "destructive" })
+        toast.error("Error", { description: "Network error" })
       } finally {
         setLoading(false)
       }
     }
     fetchUsers()
-  }, [toast])
+  }, [])
 
   async function updateUser(id: string, updates: Partial<User>) {
     try {
@@ -54,13 +53,13 @@ export function TeamTable() {
       })
       const json = await res.json()
       if (json.ok) {
-        toast({ title: "User updated" })
+        toast.success("User updated")
         // would normally refetch here for simplicity we skip in this mock component
       } else {
-        toast({ title: "Error", description: json.error.message, variant: "destructive" })
+        toast.error("Error", { description: json.error.message })
       }
     } catch {
-      toast({ title: "Error", description: "Network error", variant: "destructive" })
+      toast.error("Error", { description: "Network error" })
     }
   }
 

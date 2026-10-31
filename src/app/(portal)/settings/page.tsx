@@ -1,17 +1,55 @@
-import { db } from "@/server/db"
-import { driveAccounts } from "@/server/db/schema"
-import { requireUser } from "@/server/guard"
+"use client"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { toast } from "sonner"
 
-export default async function SettingsPage() {
-  const user = await requireUser()
-  const isAdmin = user.role === "admin" || user.role === "owner"
-  let drives: typeof driveAccounts.$inferSelect[] = []
+type DriveAccount = {
+  id: string
+  label: string
+  email: string
+  color: string
+  status: string
+  quotaUsed: number
+  quotaTotal: number | null
+}
 
-  if (isAdmin) {
-    drives = await db.select().from(driveAccounts)
+export default function SettingsPage() {
+  const [drives, setDrives] = useState<DriveAccount[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    async function loadDrives() {
+      try {
+        const res = await fetch("/api/drives")
+        if (res.status === 403) return
+        const json = await res.json()
+        if (json.ok) {
+          setDrives(json.data)
+          setIsAdmin(true) // for simple mock UI since non-admins wouldn't see all info similarly
+        }
+      } catch {
+        toast.error("Failed to load drives")
+      }
+    }
+    loadDrives()
+  }, [])
+
+  const disconnect = async (id: string) => {
+    if (!confirm("Are you sure you want to disconnect this drive?")) return
+    try {
+      const res = await fetch(`/api/drives/${id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (json.ok) {
+        toast.success("Drive disconnected")
+        setDrives(prev => prev.filter(d => d.id !== id))
+      } else {
+        toast.error("Failed to disconnect", { description: json.error.message })
+      }
+    } catch {
+      toast.error("Network error")
+    }
   }
 
   return (
@@ -57,8 +95,10 @@ export default async function SettingsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" className="mr-2">Reconnect</Button>
-                    <Button variant="destructive" size="sm">Disconnect</Button>
+                    <form className="inline" action="/api/connect/drive" method="GET">
+                      <Button variant="outline" size="sm" type="submit" className="mr-2">Reconnect</Button>
+                    </form>
+                    <Button variant="destructive" size="sm" onClick={() => disconnect(drive.id)}>Disconnect</Button>
                   </TableCell>
                 </TableRow>
               ))}

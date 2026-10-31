@@ -30,7 +30,7 @@ export default auth((req) => {
     return NextResponse.redirect(new URL(`/login?from=${encodeURIComponent(from)}`, nextUrl));
   }
 
-  // @ts-expect-error custom field
+
   const status = req.auth?.user?.status
 
   if (status === "suspended") {

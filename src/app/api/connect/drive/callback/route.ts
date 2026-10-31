@@ -5,6 +5,7 @@ import { encrypt } from '@/server/crypto'
 import { db } from '@/server/db'
 import { driveAccounts, syncState } from '@/server/db/schema'
 import { cookies } from 'next/headers'
+import { log } from '@/server/log'
 
 const DRIVE_COLORS = ['#EF4444', '#F59E0B', '#84CC16', '#10B981', '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899']
 
@@ -15,11 +16,12 @@ export async function GET(req: Request) {
   const error = url.searchParams.get('error')
 
   if (error) return NextResponse.redirect(new URL('/settings', req.url))
-  if (!code || !state) return new Response('Missing code or state', { status: 400 })
+  if (!code || !state) return NextResponse.redirect(new URL('/settings?drive_error=1', req.url))
 
   const user = await requireUser()
   if (user.role !== 'admin' && user.role !== 'owner') {
-    return new Response('Forbidden', { status: 403 })
+    log.error('Forbidden access attempt in drive connection callback')
+    return NextResponse.redirect(new URL('/settings?drive_error=1', req.url))
   }
 
   const cookieStore = await cookies()
@@ -27,7 +29,8 @@ export async function GET(req: Request) {
   const verifier = cookieStore.get('drive_connect_verifier')?.value
 
   if (!savedState || !verifier || state !== savedState) {
-    return new Response('State mismatch', { status: 400 })
+    log.error('State mismatch in drive connection callback')
+    return NextResponse.redirect(new URL('/settings?drive_error=1', req.url))
   }
 
   cookieStore.delete('drive_connect_state')
@@ -36,7 +39,8 @@ export async function GET(req: Request) {
   try {
     const tokens = await exchangeCode(code, verifier)
     if (!tokens.refresh_token) {
-      return new Response('No refresh token received. You may need to revoke access and try again.', { status: 400 })
+      log.error('No refresh token received during drive connection callback')
+      return NextResponse.redirect(new URL('/settings?drive_error=1', req.url))
     }
 
     const profile = await getGoogleProfile(tokens.access_token)
@@ -82,7 +86,7 @@ export async function GET(req: Request) {
 
     return NextResponse.redirect(new URL('/settings', req.url))
   } catch (err) {
-    console.error(err)
-    return new Response((err as Error).message, { status: 500 })
+    log.error('Failed to exchange code and save drive', { error: (err as Error).message })
+    return NextResponse.redirect(new URL('/settings?drive_error=1', req.url))
   }
 }

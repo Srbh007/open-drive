@@ -1,4 +1,5 @@
 import { ReactNode } from "react"
+import { Toaster } from "@/components/ui/sonner"
 
 export default function PortalLayout({ children }: { children: ReactNode }) {
   return (
@@ -19,6 +20,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

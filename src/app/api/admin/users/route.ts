@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server"
 import { db } from "@/server/db"
 import { users } from "@/server/db/schema"
 import { requireUser } from "@/server/guard"
 import { AppError, withRoute } from "@/server/errors"
 
-export const GET = withRoute(async (req) => {
+export const GET = withRoute(async () => {
   const user = await requireUser()
   if (user.role !== "owner" && user.role !== "admin") {
     throw new AppError("FORBIDDEN", "Admin required", 403)

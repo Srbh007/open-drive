@@ -13,16 +13,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: env.AUTH_GOOGLE_SECRET,
       authorization: {
         params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code"
+          scope: "openid email profile"
         }
       }
     }),
   ],
   session: { strategy: "jwt" },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, profile }) {
       if (!profile?.sub || !profile.email) {
         return false
       }
@@ -69,8 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token?.id) {
         session.user.id = token.id as string
-        // @ts-expect-error custom field
-        session.user.status = token.status
+        session.user.status = token.status as "pending" | "approved" | "suspended"
       }
       return session
     }

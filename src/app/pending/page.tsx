@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,7 +17,7 @@ export default function PendingPage() {
     if (!update) return;
     const interval = setInterval(async () => {
       const newSession = await update()
-      // @ts-expect-error custom field
+
       if (newSession?.user?.status === "approved") {
         router.refresh()
       }
